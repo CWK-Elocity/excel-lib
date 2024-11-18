@@ -4,6 +4,7 @@ import pandas as pd
 import openpyxl
 import io
 import zipfile
+import env
 
 def file_to_io_stream(path):
     with open(path, "rb") as file:
@@ -77,8 +78,66 @@ class ExcelFile:
     def get_sheet_names(self):
         return self.workbook.sheetnames
     
-    def create_data_structure(self):
-        pass
+    def _identify_sections(self):
+        sections = {}
+        current_section = None
+        for row_index, value in enumerate(self.worksheet.iloc[:, 0]):
+            if isinstance(value, str) and value.isupper():
+                if current_section:
+                    sections[current_section][1] = row_index - 1
+                current_section = value.strip()
+                sections[current_section] = [row_index, None]
+
+        if current_section:
+            sections[current_section][1] = self.worksheet.iloc[:, 0].last_valid_index()
+        return sections
+    
+    def create_template_structure(self):
+        template_structure = {
+            "takeover": {
+                "global_data": {},
+                "contact_person": None,
+                "responsible_person": None
+            },
+            "stations": []
+        }
+
+        sections = self._identify_sections()
+        global_data = {}
+        for row_index, row in self.worksheet.iloc[:sections[env.SECTION_STATION_TAKEOVER_DIVIDER][0], :2].iterrows():
+            value, key = row
+            if pd.notna(key) and pd.notna(value):
+                global_data[key] = value
+            template_structure["takeover"]["global_data"] = global_data
+
+        # Dane kontaktowe i osoby odpowiedzialnej
+        """
+        contact_person = self._extract_if_consistent(sections, "OSOBA KONTAKTOWA - EKSPOLATACJA STACJI") ## tutaj do wyjebania exreact if consistent
+        responsible_person = self._extract_if_consistent(sections, "OSOBA ODPOWIEDZIALNA ZA PRZEJĘCIE STACJI PO STRONIE KLIENTA")
+        template_structure["takeover"]["contact_person"] = contact_person
+        template_structure["takeover"]["responsible_person"] = responsible_person
+        """
+
+        # Dane stacji (od sekcji "STACJA ŁADOWANIA - DANE" i późniejsze)
+        for column_index, column_name in enumerate(self.worksheet.columns[2:]):
+            station_data = {}
+            for section, section_range in sections.items():
+                if section == "global_data":
+                    continue
+                for row_index in range(section_range[0], section_range[1]):
+                    key = self.worksheet.iat[row_index, 0]
+                    value = self.worksheet.iat[row_index, column_index + 2]
+                    if pd.notna(key) and pd.notna(value):
+                        station_data[key] = value
+            station_structure = {
+                "station_id": column_name,
+                "data": station_data,
+                "contact_person": contact_person,
+                "responsible_person": responsible_person
+            }
+            template_structure["stations"].append(station_structure)
+
+        return template_structure
         
     def get_template_for_this_file(self, template):
         if template.worksheet_count != 1:
