@@ -11,6 +11,6 @@ setup(
     description="Library for working with Excel files using pandas and openpyxl",
     author="Patryk Skibniewski",
     author_email="patrykski07@gmail.com",
-    url="https://github.com/RyKaT07/google-api-lib",
+    url="https://github.com/RyKaT07/excel-lib.git",
     python_requires=">=3.7"
 )
