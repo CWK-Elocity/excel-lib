@@ -78,6 +78,8 @@ class ExcelFile:
     def get_sheet_names(self):
         return self.workbook.sheetnames
     
+        """_summary_ generates library[section_name]=row_number
+        """
     def _identify_sections(self):
         sections = {}
         current_section = None
@@ -109,6 +111,20 @@ class ExcelFile:
             if pd.notna(key) and pd.notna(value):
                 global_data[key] = value
             template_structure["takeover"]["global_data"] = global_data
+        
+        contact_person = {}
+        for row_index, row in self.worksheet.iloc[sections[env.SECTION_CONTACT_PERSON][0]:sections[env.SECTION_CONTACT_PERSON][1], :2].iterrows():
+            value, key = row
+            if pd.notna(key) and pd.notna(value):
+                contact_person[key] = value
+            template_structure["takeover"]["contact_person"] = contact_person
+
+        responsible_person = {}
+        for row_index, row in self.worksheet.iloc[sections[env.SECTION_RESPONSIBLE_PERSON][0]:sections[env.SECTION_RESPONSIBLE_PERSON][1], :2].iterrows():
+            value, key = row
+            if pd.notna(key) and pd.notna(value):
+                responsible_person[key] = value
+            template_structure["takeover"]["contact_person"] = responsible_person
 
         # Dane kontaktowe i osoby odpowiedzialnej
         """
@@ -120,21 +136,17 @@ class ExcelFile:
 
         # Dane stacji (od sekcji "STACJA ŁADOWANIA - DANE" i późniejsze)
         for column_index, column_name in enumerate(self.worksheet.columns[2:]):
-            station_data = {}
+            station_structure = {}
             for section, section_range in sections.items():
                 if section == "global_data":
                     continue
+                station_data={}
                 for row_index in range(section_range[0], section_range[1]):
-                    key = self.worksheet.iat[row_index, 0]
+                    key = self.worksheet.iat[row_index, 1]
                     value = self.worksheet.iat[row_index, column_index + 2]
                     if pd.notna(key) and pd.notna(value):
                         station_data[key] = value
-            station_structure = {
-                "station_id": column_name,
-                "data": station_data,
-                "contact_person": contact_person,
-                "responsible_person": responsible_person
-            }
+                station_structure[section] = station_data
             template_structure["stations"].append(station_structure)
 
         return template_structure
