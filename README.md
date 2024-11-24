@@ -1,33 +1,55 @@
-# Dokumentacja do obsługi pliku Excel dla tworzenia struktury danych
+# Documentation for Handling Excel File to Create Data Structure
 
 ---
 
-## Wymagane rzeczy w pliku:
+## Requirements for the Excel File:
 
-1. **Sekcje zapisane wielkimi literami w pierwszej kolumnie:**
-   - Każda sekcja w pliku musi być wyraźnie oznaczona i zapisana wielkimi literami w pierwszej kolumnie.
-   - Domyślne sekcje (ich nazwy można zmienić w pliku `env.py`):
-     - `STACJA ŁADOWANIA - DANE`:
-       - Kluczowa sekcja rozdzielająca dane przejęcia od danych poszczególnych stacji ładowania.
-     - `OSOBA KONTAKTOWA - EKSPLOATACJA STACJI`:
-       - Sekcja zawierająca dane kontaktowe dla eksploatacji stacji.
-     - `OSOBA ODPOWIEDZIALNA ZA PRZEJĘCIE STACJI PO STRONIE KLIENTA`:
-       - Sekcja definiująca osobę odpowiedzialną za przejęcie stacji ze strony klienta.
+1. **Sections Written in Uppercase in the First Column:**
+   - Each section in the file must be clearly marked and written in uppercase in the first column.
+   - Default sections (their names can be modified in the `env.py` file):
+     - **`SECTION_STATION_TAKEOVER_DIVIDER`**:
+       - This is a list of possible section names separating takeover data from individual charging station data.
+       - Default values:
+         ```python
+         SECTION_STATION_TAKEOVER_DIVIDER = [
+             "STACJA ŁADOWANIA - DANE",
+             "STACJA ŁADOWANIA - PODSTAWOWE DANE"
+         ]
+         ```
+     - **`SECTION_CONTACT_PERSON`**:
+       - This is a list of possible section names containing contact details for station operation.
+       - Default values:
+         ```python
+         SECTION_CONTACT_PERSON = [
+             "OSOBA KONTAKTOWA - EKSPLOATACJA STACJI",
+             "KONTAKT TECHNICZNY"
+         ]
+         ```
+     - **`SECTION_RESPONSIBLE_PERSON`**:
+       - This is a list of possible section names defining the person responsible for taking over the station on the client's side.
+       - Default values:
+         ```python
+         SECTION_RESPONSIBLE_PERSON = [
+             "OSOBA ODPOWIEDZIALNA ZA PRZEJĘCIE STACJI PO STRONIE KLIENTA",
+             "MANAGER STACJI"
+         ]
+         ```
 
-2. **Struktura pliku Excel:**
-   - **Pierwsza kolumna:** Zawiera numery lub nagłówki sekcji.
-   - **Druga kolumna:** Klucze danych (np. "Imię i nazwisko", "Numer telefonu").
-   - **Trzecia i kolejne kolumny:** Dane dotyczące poszczególnych stacji.
+2. **Excel File Structure:**
+   - **First Column:** Contains section headers or numbering.
+   - **Second Column:** Data keys (e.g., "Name and Surname", "Phone Number").
+   - **Third and Subsequent Columns:** Data related to individual stations.
 
 ---
 
-## Założenia i ograniczenia:
+## Assumptions and Constraints:
 
-- **Sekcje wielkimi literami:**
-  - Wartości w pierwszej kolumnie, które są zapisane wielkimi literami (`isupper()`), oznaczają początek nowych sekcji.
-- **Spójność danych:**
-  - W tej funkcji **nie zakładamy spójności danych** między kolumnami (np. dla kontaktów lub odpowiedzialności). 
-  - Jeśli dane są niespójne, każda kolumna (stacja) może mieć własne dane.
+- **Sections in Uppercase:**
+  - Values in the first column written in uppercase (`isupper()`) indicate the start of new sections.
+- **Flexibility in Section Names:**
+  - The names of sections are now stored as lists in the `env.py` file, allowing for multiple possible names for each section.
+- **Data Consistency:**
+  - This function **does not assume data consistency** between columns (e.g., for contacts or responsibilities).
+  - If data is inconsistent, each column (station) can have its own data.
 
 ---
-

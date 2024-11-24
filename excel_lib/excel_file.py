@@ -78,15 +78,15 @@ class ExcelFile:
     def get_sheet_names(self):
         return self.workbook.sheetnames
     
-        """_summary_ generates library[section_name]=row_number
-        """
+    """_summary_ generates library[section_name]=row_number
+    """
     def _identify_sections(self):
         sections = {}
         current_section = None
         for row_index, value in enumerate(self.worksheet.iloc[:, 0]):
             if isinstance(value, str) and value.isupper():
                 if current_section:
-                    sections[current_section][1] = row_index - 1
+                    sections[current_section][1] = row_index
                 current_section = value.strip()
                 sections[current_section] = [row_index, None]
 
@@ -104,42 +104,45 @@ class ExcelFile:
             "stations": []
         }
 
+        # Identify sections
         sections = self._identify_sections()
-        global_data = {}
-        for row_index, row in self.worksheet.iloc[:sections[env.SECTION_STATION_TAKEOVER_DIVIDER][0], :2].iterrows():
-            value, key = row
-            if pd.notna(key) and pd.notna(value):
-                global_data[key] = row_index
+
+        # Find the key corresponding to global_data
+        takeover_divider_key = next((key for key in env.SECTION_STATION_TAKEOVER_DIVIDER if key in sections), None)
+        if takeover_divider_key:
+            global_data = {}
+            for row_index, row in self.worksheet.iloc[:sections[takeover_divider_key][1], :2].iterrows():
+                value, key = row
+                if pd.notna(key) and pd.notna(value):
+                    global_data[key] = row_index
             template_structure["takeover"]["global_data"] = global_data
-        
-        contact_person = {}
-        for row_index, row in self.worksheet.iloc[sections[env.SECTION_CONTACT_PERSON][0]:sections[env.SECTION_CONTACT_PERSON][1], :2].iterrows():
-            value, key = row
-            if pd.notna(key) and pd.notna(value):
-                contact_person[key] = row_index
+
+        # Find the key corresponding to contact_person
+        contact_person_key = next((key for key in env.SECTION_CONTACT_PERSON if key in sections), None)
+        if contact_person_key:
+            contact_person = {}
+            for row_index, row in self.worksheet.iloc[sections[contact_person_key][0]:sections[contact_person_key][1], :2].iterrows():
+                value, key = row
+                if pd.notna(key) and pd.notna(value):
+                    contact_person[key] = row_index
             template_structure["takeover"]["contact_person"] = contact_person
 
-        responsible_person = {}
-        for row_index, row in self.worksheet.iloc[sections[env.SECTION_RESPONSIBLE_PERSON][0]:sections[env.SECTION_RESPONSIBLE_PERSON][1], :2].iterrows():
-            value, key = row
-            if pd.notna(key) and pd.notna(value):
-                responsible_person[key] = row_index
-            template_structure["takeover"]["contact_person"] = responsible_person
+        # Find the key corresponding to responsible_person
+        responsible_person_key = next((key for key in env.SECTION_RESPONSIBLE_PERSON if key in sections), None)
+        if responsible_person_key:
+            responsible_person = {}
+            for row_index, row in self.worksheet.iloc[sections[responsible_person_key][0]:sections[responsible_person_key][1], :2].iterrows():
+                value, key = row
+                if pd.notna(key) and pd.notna(value):
+                    responsible_person[key] = row_index
+            template_structure["takeover"]["responsible_person"] = responsible_person
 
-        # Dane kontaktowe i osoby odpowiedzialnej
-        """
-        contact_person = self._extract_if_consistent(sections, "OSOBA KONTAKTOWA - EKSPOLATACJA STACJI") ## tutaj do wyjebania exreact if consistent
-        responsible_person = self._extract_if_consistent(sections, "OSOBA ODPOWIEDZIALNA ZA PRZEJĘCIE STACJI PO STRONIE KLIENTA")
-        template_structure["takeover"]["contact_person"] = contact_person
-        template_structure["takeover"]["responsible_person"] = responsible_person
-        """
-
-        # Dane stacji (od sekcji "STACJA ŁADOWANIA - DANE" i późniejsze)
+        # Station data (from "STACJA ŁADOWANIA - DANE" section and onwards)
         station_structure = {}
         for section, section_range in sections.items():
-            if section == "global_data":
+            if section in env.SECTION_STATION_TAKEOVER_DIVIDER:  # Skip global sections
                 continue
-            station_data={}
+            station_data = {}
             for row_index in range(section_range[0], section_range[1]):
                 key = self.worksheet.iat[row_index, 1]
                 if pd.notna(key):
@@ -148,6 +151,7 @@ class ExcelFile:
         template_structure["stations"].append(station_structure)
 
         return template_structure
+
         
     def get_template_for_this_file(self, template):
         if template.worksheet_count != 1:
