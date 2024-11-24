@@ -108,7 +108,10 @@ class ExcelFile:
         sections = self._identify_sections()
 
         # Find the key corresponding to global_data
+        print(env.SECTION_STATION_TAKEOVER_DIVIDER)
+        print(env.SECTION_STATION_TAKEOVER_DIVIDER[0])
         takeover_divider_key = next((key for key in env.SECTION_STATION_TAKEOVER_DIVIDER if key in sections), None)
+        print(takeover_divider_key)
         if takeover_divider_key:
             global_data = {}
             for row_index, row in self.worksheet.iloc[:sections[takeover_divider_key][0], :2].iterrows():
