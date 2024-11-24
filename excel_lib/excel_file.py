@@ -111,7 +111,7 @@ class ExcelFile:
         takeover_divider_key = next((key for key in env.SECTION_STATION_TAKEOVER_DIVIDER if key in sections), None)
         if takeover_divider_key:
             global_data = {}
-            for row_index, row in self.worksheet.iloc[:sections[takeover_divider_key][1], :2].iterrows():
+            for row_index, row in self.worksheet.iloc[:sections[takeover_divider_key][0], :2].iterrows():
                 value, key = row
                 if pd.notna(key) and pd.notna(value):
                     global_data[key] = row_index
@@ -140,8 +140,6 @@ class ExcelFile:
         # Station data (from "STACJA ŁADOWANIA - DANE" section and onwards)
         station_structure = {}
         for section, section_range in sections.items():
-            if section in env.SECTION_STATION_TAKEOVER_DIVIDER:  # Skip global sections
-                continue
             station_data = {}
             for row_index in range(section_range[0], section_range[1]):
                 key = self.worksheet.iat[row_index, 1]
