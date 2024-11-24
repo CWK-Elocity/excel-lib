@@ -117,7 +117,7 @@ class ExcelFile:
             for row_index, row in self.worksheet.iloc[:sections[takeover_divider_key][0], :2].iterrows():
                 value, key = row
                 if pd.notna(key) and pd.notna(value):
-                    global_data[key] = row_index
+                    global_data[key.strip()] = row_index
             template_structure["takeover"]["global_data"] = global_data
 
         # Find the key corresponding to contact_person
@@ -202,3 +202,57 @@ class ExcelFile:
                 stations.append(station_data)
 
         return stations
+    def _update_rows_in_structure(self, data_section):
+        updated_section = {}
+        for key, expected_row in data_section.items():
+            actual_label = self.worksheet.iloc[expected_row, 1] if expected_row < len(self.worksheet) else None
+            if pd.notna(actual_label) and actual_label.strip() == key:
+                updated_section[key] = expected_row
+            else:
+                found_row = -1
+                for row_index, value in self.worksheet.iloc[:, 1].items():
+                    if pd.notna(value) and value.strip() == key:
+                        found_row = row_index
+                        break
+                updated_section[key] = found_row
+        return updated_section
+
+    def compare_structure_with_file(self, template):
+        updated_structure = {
+            "takeover": {
+                "global_data": {},
+                "contact_person": None,
+                "responsible_person": None
+            },
+            "stations": []
+        }
+        sections = self._identify_sections()
+        
+        takeover_divider_key = next((key for key in env.SECTION_STATION_TAKEOVER_DIVIDER if key in sections), None)
+        if takeover_divider_key:
+            updated_structure["takeover"][takeover_divider_key] = self._update_rows_in_structure(template["takeover"][takeover_divider_key])
+        
+        contact_person_key = next((key for key in env.SECTION_CONTACT_PERSON if key in sections), None)
+        if contact_person_key:
+            updated_structure["takeover"][contact_person_key] = self._update_rows_in_structure(template["takeover"][contact_person_key])
+
+        responsible_person_key = next((key for key in env.SECTION_RESPONSIBLE_PERSON if key in sections), None)
+        if responsible_person_key:
+            updated_structure["takeover"][responsible_person_key] = self._update_rows_in_structure(template["takeover"][responsible_person_key])
+
+        for station_section in template["stations"]:
+            section_name = station_section[0]
+            updated_structure["stations"][section_name] = self._update_rows_in_structure(station_section)
+
+        print(f"Cała struktura {updated_structure}")
+        return updated_structure
+
+
+    def create_data_structure_from_template(self, template):
+
+        data_structure = self.compare_structure_with_file(template)
+
+        sections = self._identify_sections()
+
+        responsible_person_key = next((key for key in env.SECTION_RESPONSIBLE_PERSON if key in sections), None)
+        global_data_groups = []
