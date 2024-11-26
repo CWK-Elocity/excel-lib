@@ -240,7 +240,7 @@ class ExcelFile:
 
         collected_takeover_structures = []
 
-        for column in range(1, self.worksheet.shape[1]):
+        for column in range(2, self.worksheet.shape[1]):
             # Take global data from column
             current_global_data = {
                 key: self.worksheet.iloc[row, column] if row < len(self.worksheet) else None for key, row in data_structure["takeover"]["global_data"].items()
