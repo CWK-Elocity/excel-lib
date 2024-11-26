@@ -33,7 +33,6 @@ class ExcelFile:
     def _check_for_non_cell_objects(self, openpyxl_workbook_instance, file_stream):
         workbook = openpyxl_workbook_instance
         non_cell_objects = []
-        images = self._check_for_images_in_archive(file_stream)
         for sheet_name in workbook.sheetnames:
             worksheet = workbook[sheet_name]
 
@@ -45,9 +44,6 @@ class ExcelFile:
                     else:
                         anchor_info = f"Image not anchored to any cell in sheet '{sheet_name}'."
                     non_cell_objects.append(anchor_info)
-            
-            if images:
-                non_cell_objects.extend(images)
 
             if worksheet._charts:
                 for chart in worksheet._charts:
