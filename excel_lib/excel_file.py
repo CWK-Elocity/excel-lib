@@ -13,15 +13,32 @@ def file_to_io_stream(path):
 
 class ExcelFile:
     def __init__(self, file_stream):
+        """Creates an ExcelFile object that will deal with data processing
+            Validates file and checks for images
+
+        Args:
+            file_stream (io_stream): an excel file in form of io_stream
+        """
         self.worksheet_count = 0
         try:
             workbook = self._validate_excel_file(file_stream)
-            self.non_cell_objects = self._check_for_non_cell_objects(workbook, file_stream)
+            self.non_cell_objects = self._check_for_non_cell_objects(workbook)
         except Exception as e:
             print(f"Unecpected error occured during loading file into openpyxl: {e}")
         self.worksheet = pd.read_excel(file_stream)
     
     def _validate_excel_file(self, file_stream):
+        """Validates excel file and checks how many worksheets there are in file
+
+        Args:
+            file_stream (io_stream): an excel file in form of io_stream
+
+        Raises:
+            ValueError: If it did not pass validation
+
+        Returns:
+            object: first workbook from excel file
+        """
         try:
             file_stream.seek(0)
             workbook = openpyxl.load_workbook(file_stream)
@@ -30,7 +47,16 @@ class ExcelFile:
         except openpyxl.utils.exceptions.InvalidFileException:
             raise ValueError("It is not a valid excel file")
         
-    def _check_for_non_cell_objects(self, openpyxl_workbook_instance, file_stream):
+    def _check_for_non_cell_objects(self, openpyxl_workbook_instance):
+        """Checks if there are any objects like images or charts etc. 
+        or other things that are not in cells
+
+        Args:
+            openpyxl_workbook_instance (object): workbook from excel file
+
+        Returns:
+            lsit: list of non cell objetct
+        """
         workbook = openpyxl_workbook_instance
         non_cell_objects = []
         for sheet_name in workbook.sheetnames:
@@ -51,7 +77,10 @@ class ExcelFile:
         
         return non_cell_objects
     
+    """
+    obsolete
     def _check_for_images_in_archive(self, file_stream):
+        
         images_found = []
 
         file_stream_copy = io.BytesIO(file_stream.getvalue())
@@ -73,10 +102,14 @@ class ExcelFile:
     
     def get_sheet_names(self):
         return self.workbook.sheetnames
-    
-    """_summary_ generates library[section_name]=row_number
     """
+
     def _identify_sections(self):
+        """Identify sections based on first column in workbook
+
+        Returns:
+            list: list of section names
+        """
         sections = {}
         current_section = None
         for row_index, value in enumerate(self.worksheet.iloc[:, 0]):
@@ -87,10 +120,15 @@ class ExcelFile:
                 sections[current_section] = [row_index, None]
 
         if current_section:
-            sections[current_section][1] = self.worksheet.iloc[:, 0].last_valid_index()
+            sections[current_section][1] = self.worksheet.iloc[:, 0].last_valid_index() + 1
         return sections
     
     def create_template_structure(self):
+        """Based on example file creates template with row numbers where the information should be
+
+        Returns:
+            structure/json object: dictionary with name of information: rowa frouped by sections
+        """
         template_structure = {
             "takeover": {
                 "global_data": {},
@@ -121,7 +159,7 @@ class ExcelFile:
             for row_index, row in self.worksheet.iloc[sections[contact_person_key][0]:sections[contact_person_key][1], :2].iterrows():
                 value, key = row
                 if pd.notna(key) and pd.notna(value):
-                    contact_person[key] = row_index
+                    contact_person[key.strip()] = row_index
             template_structure["takeover"]["contact_person"] = contact_person
 
         # Find the key corresponding to responsible_person
@@ -131,7 +169,7 @@ class ExcelFile:
             for row_index, row in self.worksheet.iloc[sections[responsible_person_key][0]:sections[responsible_person_key][1], :2].iterrows():
                 value, key = row
                 if pd.notna(key) and pd.notna(value):
-                    responsible_person[key] = row_index
+                    responsible_person[key.strip()] = row_index
             template_structure["takeover"]["responsible_person"] = responsible_person
 
         # Station data (from "STACJA ŁADOWANIA - DANE" section and onwards)
@@ -141,41 +179,18 @@ class ExcelFile:
             for row_index in range(section_range[0], section_range[1]):
                 key = self.worksheet.iat[row_index, 1]
                 if pd.notna(key):
-                    station_data[key] = row_index
+                    station_data[key.strip()] = row_index
             station_structure[section] = station_data
         template_structure["stations"]=station_structure
 
         return template_structure
 
-        
-    def get_template_for_this_file(self, template):
-        if template.worksheet_count != 1:
-            print("Too many worksheets. Only first one will be taken as template into account.")
-        form = template.worksheet.iloc[:, :2]
-        self.discarded_data_info = []
-        worksheet = self.worksheet
-        number_of_discarded_rows = worksheet.shape[0] - form.shape[0]
-        if number_of_discarded_rows > 0:
-            self.discarded_data_info.append(f"Discarded rows below the form. Number of discarded rows: {number_of_discarded_rows}")
-            worksheet = worksheet.iloc[form.shape[0]]
-        elif number_of_discarded_rows < 0:
-            self.discarded_data_info.append(f"Too little rows. Bad form.")
-        
-        template_col = form.iloc[:, 1]
-        form_col = worksheet.iloc[:, 1]
-        matching_values = []
-
-        for index, template_value in template_col.items():
-            matching_row = next((i for i, value in form_col.items() if template_value == value), -1)
-            if matching_row == -1:
-                if form.iloc[index, 0] == worksheet.iloc[index, 0]:
-                    matching_row = form.iloc[index, 0]
-            matching_values.append([index, template_value, matching_row])
-        
-        self.comparison_template = pd.DataFrame(matching_values, columns=['Template Index', 'Value', 'Form Index'])
-        return self.comparison_template.values.tolist()
-
     def retrive_stations(self):
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
         if self.discarded_data_info:
             pass
         else:
@@ -196,22 +211,40 @@ class ExcelFile:
                 stations.append(station_data)
 
         return stations
+    
     def _update_rows_in_structure(self, data_section):
+        """Checks if the value is in the same row in file and in template.
+        Otherwise looks for that specific value in all rows, and if found then updates row number
+
+        Args:
+            data_section (dictionary): section of whole data
+
+        Returns:
+            dictionary: updated section
+        """
         updated_section = {}
         for key, expected_row in data_section.items():
             actual_label = self.worksheet.iloc[expected_row, 1] if expected_row < len(self.worksheet) else None
-            if pd.notna(actual_label) and actual_label.strip() == key:
+            if pd.notna(actual_label) and actual_label.strip() == key.strip():
                 updated_section[key] = expected_row
             else:
                 found_row = -1
                 for row_index, value in self.worksheet.iloc[:, 1].items():
-                    if pd.notna(value) and value.strip() == key:
+                    if pd.notna(value) and value.strip() == key.strip():
                         found_row = row_index
                         break
                 updated_section[key] = found_row
         return updated_section
 
     def compare_structure_with_file(self, template):
+        """Compares actual working file with give template to obtain rows that will be used to determine value
+
+        Args:
+            template (dictionary): a dict containg template wich user wants to use
+
+        Returns:
+            dcit: similar to template but updated for that file
+        """
         updated_structure = {
             "takeover": {
                 "global_data": {},
@@ -231,6 +264,14 @@ class ExcelFile:
 
 
     def create_data_structure_from_template(self, template):
+        """Gather data from file based on template and structurize them in one dict object
+
+        Args:
+            template (dictionary): a dict containg template wich user wants to use
+
+        Returns:
+            dict: containg ale data categorised into sections
+        """
 
         data_structure = self.compare_structure_with_file(template)
 
