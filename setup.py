@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="excel-lib",  
-    version="0.1.7",
+    version="0.1.8",
     packages=find_packages(),
     install_requires=[
         "openpyxl>=3.0.0",

@@ -11,6 +11,19 @@ def file_to_io_stream(path):
         file_stream = io.BytesIO(file.read())
     return file_stream
 
+def is_match(value1, value2):
+    """Compares two values, stripping strings if applicable."""
+    if isinstance(value1, str) and isinstance(value2, str):
+        return value1.strip() == value2.strip()
+    return value1 == value2
+
+def find_row_for_key(key):
+    """Finds the row index for a given key in the worksheet."""
+    for row_index, value in self.worksheet.iloc[:, 1].items():
+        if pd.notna(value) and is_match(value, key):
+            return row_index
+    return -1
+
 class ExcelFile:
     def __init__(self, file_stream):
         """Creates an ExcelFile object that will deal with data processing
@@ -116,7 +129,10 @@ class ExcelFile:
             if isinstance(value, str) and value.isupper():
                 if current_section:
                     sections[current_section][1] = row_index
-                current_section = value.strip()
+                if isinstance(value, str) and isinstance(value, str):
+                    current_section = value.strip()
+                else:
+                    current_section = value
                 sections[current_section] = [row_index, None]
 
         if current_section:
@@ -149,7 +165,7 @@ class ExcelFile:
             for row_index, row in self.worksheet.iloc[:sections[takeover_divider_key][0], :2].iterrows():
                 value, key = row
                 if pd.notna(key) and pd.notna(value):
-                    global_data[key.strip()] = row_index
+                    global_data[key] = row_index
             template_structure["takeover"]["global_data"] = global_data
 
         # Find the key corresponding to contact_person
@@ -159,7 +175,7 @@ class ExcelFile:
             for row_index, row in self.worksheet.iloc[sections[contact_person_key][0]:sections[contact_person_key][1], :2].iterrows():
                 value, key = row
                 if pd.notna(key) and pd.notna(value):
-                    contact_person[key.strip()] = row_index
+                    contact_person[key] = row_index
             template_structure["takeover"]["contact_person"] = contact_person
 
         # Find the key corresponding to responsible_person
@@ -169,7 +185,7 @@ class ExcelFile:
             for row_index, row in self.worksheet.iloc[sections[responsible_person_key][0]:sections[responsible_person_key][1], :2].iterrows():
                 value, key = row
                 if pd.notna(key) and pd.notna(value):
-                    responsible_person[key.strip()] = row_index
+                    responsible_person[key] = row_index
             template_structure["takeover"]["responsible_person"] = responsible_person
 
         # Station data (from "STACJA ŁADOWANIA - DANE" section and onwards)
@@ -179,7 +195,7 @@ class ExcelFile:
             for row_index in range(section_range[0], section_range[1]):
                 key = self.worksheet.iat[row_index, 1]
                 if pd.notna(key):
-                    station_data[key.strip()] = row_index
+                    station_data[key] = row_index
             station_structure[section] = station_data
         template_structure["stations"]=station_structure
 
@@ -214,7 +230,7 @@ class ExcelFile:
     
     def _update_rows_in_structure(self, data_section):
         """Checks if the value is in the same row in file and in template.
-        Otherwise looks for that specific value in all rows, and if found then updates row number
+        Otherwise looks for that specific value in all rows, and if found then updates row number.
 
         Args:
             data_section (dictionary): section of whole data
@@ -222,18 +238,16 @@ class ExcelFile:
         Returns:
             dictionary: updated section
         """
+
         updated_section = {}
         for key, expected_row in data_section.items():
             actual_label = self.worksheet.iloc[expected_row, 1] if expected_row < len(self.worksheet) else None
-            if pd.notna(actual_label) and actual_label.strip() == key.strip():
+
+            if pd.notna(actual_label) and is_match(actual_label, key):
                 updated_section[key] = expected_row
             else:
-                found_row = -1
-                for row_index, value in self.worksheet.iloc[:, 1].items():
-                    if pd.notna(value) and value.strip() == key.strip():
-                        found_row = row_index
-                        break
-                updated_section[key] = found_row
+                updated_section[key] = find_row_for_key(key)
+
         return updated_section
 
     def compare_structure_with_file(self, template):
