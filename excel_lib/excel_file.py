@@ -1,10 +1,6 @@
-import openpyxl.utils
-import openpyxl.utils.exceptions
 import pandas as pd
-import openpyxl
 import io
 import zipfile
-import env
 
 def file_to_io_stream(path):
     with open(path, "rb") as file:
@@ -17,105 +13,61 @@ def is_match(value1, value2):
         return value1.strip() == value2.strip()
     return value1 == value2
 
-def find_row_for_key(key):
-    """Finds the row index for a given key in the worksheet."""
-    for row_index, value in self.worksheet.iloc[:, 1].items():
-        if pd.notna(value) and is_match(value, key):
-            return row_index
-    return -1
-
 class ExcelFile:
-    def __init__(self, file_stream):
-        """Creates an ExcelFile object that will deal with data processing
-            Validates file and checks for images
-
-        Args:
-            file_stream (io_stream): an excel file in form of io_stream
-        """
+    def __init__(self, file_stream, sections_config):
+        """Initializes the ExcelFile class, validates the file, and checks for non-cell objects."""
+        self.sections_config = sections_config
         self.worksheet_count = 0
-        try:
-            workbook = self._validate_excel_file(file_stream)
-            self.non_cell_objects = self._check_for_non_cell_objects(workbook)
-        except Exception as e:
-            print(f"Unecpected error occured during loading file into openpyxl: {e}")
-        self.worksheet = pd.read_excel(file_stream)
-    
+        self.worksheet = None
+        self._validate_excel_file(file_stream)
+        self.non_cell_objects = self._check_for_non_cell_objects(file_stream)
+        self._load_first_worksheet(file_stream)  # Load only the first worksheet
+
     def _validate_excel_file(self, file_stream):
-        """Validates excel file and checks how many worksheets there are in file
-
-        Args:
-            file_stream (io_stream): an excel file in form of io_stream
-
-        Raises:
-            ValueError: If it did not pass validation
-
-        Returns:
-            object: first workbook from excel file
-        """
+        """Validates if the file is a correct Excel (.xlsx) file."""
+        file_stream.seek(0)  # Ensure stream starts at the beginning
         try:
-            file_stream.seek(0)
-            workbook = openpyxl.load_workbook(file_stream)
-            self.worksheet_count = len(workbook.sheetnames)
-            return workbook
-        except openpyxl.utils.exceptions.InvalidFileException:
-            raise ValueError("It is not a valid excel file")
-        
-    def _check_for_non_cell_objects(self, openpyxl_workbook_instance):
-        """Checks if there are any objects like images or charts etc. 
-        or other things that are not in cells
+            with zipfile.ZipFile(file_stream, 'r') as zip_ref:
+                if "xl/workbook.xml" not in zip_ref.namelist():
+                    raise ValueError("Invalid Excel file: missing xl/workbook.xml")
+        except zipfile.BadZipFile:
+            raise ValueError("Invalid Excel file: unable to open as ZIP archive")
 
-        Args:
-            openpyxl_workbook_instance (object): workbook from excel file
-
-        Returns:
-            lsit: list of non cell objetct
-        """
-        workbook = openpyxl_workbook_instance
+    def _check_for_non_cell_objects(self, file_stream):
+        """Extracts images and chart references from an Excel file."""
         non_cell_objects = []
-        for sheet_name in workbook.sheetnames:
-            worksheet = workbook[sheet_name]
-
-            if worksheet._images:
-                for image in worksheet._images:
-                    if image.anchor._from:
-                        anchor = image.anchor._from
-                        anchor_info = f"Image anchored at cell {anchor.col + 1}{anchor.row + 1} in sheet '{sheet_name}'."
-                    else:
-                        anchor_info = f"Image not anchored to any cell in sheet '{sheet_name}'."
-                    non_cell_objects.append(anchor_info)
-
-            if worksheet._charts:
-                for chart in worksheet._charts:
-                    non_cell_objects.append(f"Chart found in sheet '{sheet_name}'.")
-        
+        file_stream.seek(0)  # Ensure the stream is at the beginning
+        with zipfile.ZipFile(file_stream, 'r') as zip_ref:
+            # Check for media files (images)
+            media_files = [f for f in zip_ref.namelist() if f.startswith("xl/media/")]
+            for media_file in media_files:
+                non_cell_objects.append(f"Image found: {media_file}")
+            # Check for drawings
+            drawing_files = [f for f in zip_ref.namelist() if f.startswith("xl/drawings/drawing")]
+            for drawing_file in drawing_files:
+                with zip_ref.open(drawing_file) as f:
+                    content = f.read().decode("utf-8")
+                    if "<xdr:twoCellAnchor>" in content:
+                        non_cell_objects.append(f"Image anchored in {drawing_file}")
+                    elif "<xdr:absoluteAnchor>" in content:
+                        non_cell_objects.append(f"Image not anchored in {drawing_file}")
         return non_cell_objects
-    
-    """
-    obsolete
-    def _check_for_images_in_archive(self, file_stream):
-        
-        images_found = []
 
-        file_stream_copy = io.BytesIO(file_stream.getvalue())
+    def _load_first_worksheet(self, file_stream):
+        """Loads only the first worksheet and warns if there are multiple sheets."""
+        file_stream.seek(0)  # Reset stream position
+        excel_file = pd.ExcelFile(file_stream)
+        self.worksheet_count = len(excel_file.sheet_names)  # Get sheet count
+        if self.worksheet_count > 1:
+            print(f"Warning: The Excel file contains {self.worksheet_count} sheets. Only the first sheet will be used.")
+        self.worksheet = pd.read_excel(file_stream, sheet_name=excel_file.sheet_names[0])
 
-        with zipfile.ZipFile(file_stream_copy, 'r') as zip_ref:
-            image_files = [file for file in zip_ref.namelist() if file.startswith("xl/media/")]
-            if image_files:
-                for image_file in image_files:
-                    images_found.append(f"Image found: {image_file}")
-            else:
-                images_found.append("No images found in xl/media/ folder")
-
-        return images_found
-
-    def get_non_cell_objects_info(self):
-        if self.non_cell_objects:
-            return "\n".join(self.non_cell_objects)
-        return "No non-cell objects detected."
-    
-    def get_sheet_names(self):
-        return self.workbook.sheetnames
-    """
+    def find_row_for_key(self, key):
+        """Finds the row index for a given key in the worksheet."""
+        for row_index, value in self.worksheet.iloc[:, 1].items():
+            if pd.notna(value) and is_match(value, key):
+                return row_index
+        return -1
 
     def _identify_sections(self):
         """Identify sections based on first column in workbook
@@ -140,11 +92,7 @@ class ExcelFile:
         return sections
     
     def create_template_structure(self):
-        """Based on example file creates template with row numbers where the information should be
-
-        Returns:
-            structure/json object: dictionary with name of information: rowa frouped by sections
-        """
+        """Creates a template structure based on the Excel file."""
         template_structure = {
             "takeover": {
                 "global_data": {},
@@ -157,8 +105,11 @@ class ExcelFile:
         # Identify sections
         sections = self._identify_sections()
 
-        # Find the key corresponding to global_data
-        takeover_divider_key = next((key for key in env.SECTION_STATION_TAKEOVER_DIVIDER if key in sections), None)
+        # Use configuration for takeover divider
+        takeover_divider_key = next(
+            (key for key in self.sections_config["SECTION_STATION_TAKEOVER_DIVIDER"] if key in sections), 
+            None
+        )
 
         if takeover_divider_key:
             global_data = {}
@@ -168,8 +119,11 @@ class ExcelFile:
                     global_data[key] = row_index
             template_structure["takeover"]["global_data"] = global_data
 
-        # Find the key corresponding to contact_person
-        contact_person_key = next((key for key in env.SECTION_CONTACT_PERSON if key in sections), None)
+        # Similar for contact_person and responsible_person
+        contact_person_key = next(
+            (key for key in self.sections_config["SECTION_CONTACT_PERSON"] if key in sections), 
+            None
+        )
         if contact_person_key:
             contact_person = {}
             for row_index, row in self.worksheet.iloc[sections[contact_person_key][0]:sections[contact_person_key][1], :2].iterrows():
@@ -178,8 +132,10 @@ class ExcelFile:
                     contact_person[key] = row_index
             template_structure["takeover"]["contact_person"] = contact_person
 
-        # Find the key corresponding to responsible_person
-        responsible_person_key = next((key for key in env.SECTION_RESPONSIBLE_PERSON if key in sections), None)
+        responsible_person_key = next(
+            (key for key in self.sections_config["SECTION_RESPONSIBLE_PERSON"] if key in sections), 
+            None
+        )
         if responsible_person_key:
             responsible_person = {}
             for row_index, row in self.worksheet.iloc[sections[responsible_person_key][0]:sections[responsible_person_key][1], :2].iterrows():
@@ -188,7 +144,7 @@ class ExcelFile:
                     responsible_person[key] = row_index
             template_structure["takeover"]["responsible_person"] = responsible_person
 
-        # Station data (from "STACJA ŁADOWANIA - DANE" section and onwards)
+        # Station data
         station_structure = {}
         for section, section_range in sections.items():
             station_data = {}
@@ -197,9 +153,10 @@ class ExcelFile:
                 if pd.notna(key):
                     station_data[key] = row_index
             station_structure[section] = station_data
-        template_structure["stations"]=station_structure
+        template_structure["stations"] = station_structure
 
         return template_structure
+
 
     def retrive_stations(self):
         """_summary_
@@ -246,7 +203,7 @@ class ExcelFile:
             if pd.notna(actual_label) and is_match(actual_label, key):
                 updated_section[key] = expected_row
             else:
-                updated_section[key] = find_row_for_key(key)
+                updated_section[key] = self.find_row_for_key(key)
 
         return updated_section
 

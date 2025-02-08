@@ -153,7 +153,6 @@ dmypy.json
 cython_debug/
 
 #User
-tests/
 .vscode/
 
 # PyCharm

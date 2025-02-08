@@ -1,55 +1,55 @@
-# Documentation for Handling Excel File to Create Data Structure
+# Excel Processing Library
 
----
+This library provides tools to process Excel files in memory, validate their structure, and extract specific information such as images, charts, and sectioned data.
 
-## Requirements for the Excel File:
+## Features
 
-1. **Sections Written in Uppercase in the First Column:**
-   - Each section in the file must be clearly marked and written in uppercase in the first column.
-   - Default sections (their names can be modified in the `env.py` file):
-     - **`SECTION_STATION_TAKEOVER_DIVIDER`**:
-       - This is a list of possible section names separating takeover data from individual charging station data.
-       - Default values:
-         ```python
-         SECTION_STATION_TAKEOVER_DIVIDER = [
-             "STACJA ŁADOWANIA - DANE",
-             "STACJA ŁADOWANIA - PODSTAWOWE DANE"
-         ]
-         ```
-     - **`SECTION_CONTACT_PERSON`**:
-       - This is a list of possible section names containing contact details for station operation.
-       - Default values:
-         ```python
-         SECTION_CONTACT_PERSON = [
-             "OSOBA KONTAKTOWA - EKSPLOATACJA STACJI",
-             "KONTAKT TECHNICZNY"
-         ]
-         ```
-     - **`SECTION_RESPONSIBLE_PERSON`**:
-       - This is a list of possible section names defining the person responsible for taking over the station on the client's side.
-       - Default values:
-         ```python
-         SECTION_RESPONSIBLE_PERSON = [
-             "OSOBA ODPOWIEDZIALNA ZA PRZEJĘCIE STACJI PO STRONIE KLIENTA",
-             "MANAGER STACJI"
-         ]
-         ```
+- **Validation**: Ensures the file is a valid Excel `.xlsx` file using `zipfile`.
+- **Image and Chart Detection**: Extracts references to images and charts, including their placement information.
+- **Sectioned Data Extraction**: Handles Excel files with section headers, merged cells, and auxiliary numbering.
+- **Single Worksheet Processing**: Reads only the first worksheet and warns if multiple sheets are present.
 
-2. **Excel File Structure:**
-   - **First Column:** Contains section headers or numbering.
-   - **Second Column:** Data keys (e.g., "Name and Surname", "Phone Number").
-   - **Third and Subsequent Columns:** Data related to individual stations.
+## Installation
 
----
+To install the library locally, use:
 
-## Assumptions and Constraints:
+```bash
+pip install .
+```
 
-- **Sections in Uppercase:**
-  - Values in the first column written in uppercase (`isupper()`) indicate the start of new sections.
-- **Flexibility in Section Names:**
-  - The names of sections are now stored as lists in the `env.py` file, allowing for multiple possible names for each section.
-- **Data Consistency:**
-  - This function **does not assume data consistency** between columns (e.g., for contacts or responsibilities).
-  - If data is inconsistent, each column (station) can have its own data.
+If you experience issues where the library is not recognized during testing, ensure it is reinstalled after every update.
 
----
+## Tests
+
+The library includes comprehensive tests for its functionality. Key test cases include:
+
+1. **Validation Tests**: Confirm the library properly validates `.xlsx` files.
+2. **Image Detection Tests**: Verify that images and charts are correctly detected in various scenarios:
+   - Single image in a cell
+   - Image outside a cell
+   - Multiple images in different cells and locations
+   - Updated image detection using `zipfile` to parse `xl/media/` and `xl/drawings/` files for better accuracy.
+3. **Section Handling Tests**: Ensure section headers and merged cells are processed correctly.
+4. **Row Index Detection**:
+   - Tests for finding specific keys in the second column of the Excel file.
+   - Handles extra whitespace around keys.
+   - Ignores section headers during key search.
+5. **New Tests for Class `ExcelFile`**:
+   - Tests for `find_row_for_key` to ensure proper handling of auxiliary numbering (`Lp`) and section headers.
+   - Updated to reflect zero-based indexing in pandas.
+
+To run tests, execute the following:
+
+```bash
+pytest tests/
+```
+
+### Key Updates to Testing
+
+- **Zero-Based Indexing**: Test cases now account for `pandas` indexing starting at `0` while Excel rows start at `1`. For example, the key "Model" located in Excel row `6` will correspond to index `4` in `pandas`.
+- **Fixtures for Realistic Data**: Tests simulate real-world Excel structures with auxiliary numbering (`Lp`), section headers, and merged cells.
+- **Improved Image Detection**: Image detection no longer relies on `openpyxl` and instead uses `zipfile` to directly parse Excel archives.
+
+## Usage
+
+
