@@ -19,6 +19,7 @@ class ExcelFile:
         self.sections_config = sections_config
         self.worksheet_count = 0
         self.worksheet = None
+        self.identified_sections = None
         self._validate_excel_file(file_stream)
         self.non_cell_objects = self._check_for_non_cell_objects(file_stream)
         self._load_first_worksheet(file_stream)  # Load only the first worksheet
@@ -62,12 +63,69 @@ class ExcelFile:
             print(f"Warning: The Excel file contains {self.worksheet_count} sheets. Only the first sheet will be used.")
         self.worksheet = pd.read_excel(file_stream, sheet_name=excel_file.sheet_names[0])
 
-    def find_row_for_key(self, key):
-        """Finds the row index for a given key in the worksheet."""
-        for row_index, value in self.worksheet.iloc[:, 1].items():
-            if pd.notna(value) and is_match(value, key):
-                return row_index
-        return -1
+    def find_row_for_key(self, key, section_name=None):
+        """
+        Finds all row indices for a given key in the worksheet.
+        Optionally filters matches by a specific section.
+
+        Args:
+            key (str): The key to search for.
+            section_name (str, optional): The name of the section to restrict the search.
+
+        Returns:
+            int or list: Single index if one match is found, list of indices if multiple matches are found,
+                        or -1 if no match is found.
+
+        Raises:
+            ValueError: If multiple matches are found within the specified section.
+        """
+        # Find all matching indices
+        matching_indices = [
+            row_index for row_index, value in self.worksheet.iloc[:, 1].items()
+            if pd.notna(value) and is_match(value, key)
+        ]
+
+        if not matching_indices:
+            return -1  # No matches found
+
+        if len(matching_indices) == 1:
+            return matching_indices[0]  # Single match in the entire worksheet
+
+        section_keys = {
+            "global_data": self.sections_config.get("SECTION_STATION_TAKEOVER_DIVIDER", []),
+            "contact_person": self.sections_config.get("SECTION_CONTACT_PERSON", []),
+            "responsible_person": self.sections_config.get("SECTION_RESPONSIBLE_PERSON", [])
+        }
+
+        print(f"Current value of section_name: {section_name}")
+
+        if section_name in section_keys:
+            section_name = section_keys[section_name][0]
+
+
+        print(f"Current value of section_name after search: {section_name}")
+
+        if section_name:
+            # Get section ranges
+            if self.identified_sections is None:
+                self._identify_sections()
+            if self.identified_sections is None:
+                raise ValueError(f"No sections have been identified.")
+            if section_name not in self.identified_sections:
+                return -1
+
+            section_start, section_end = self.identified_sections[section_name]
+            # Filter matches by section range
+            section_matches = [index for index in matching_indices if section_start <= index <= section_end]
+
+            if len(section_matches) == 1:
+                return section_matches[0]  # Single match in the section
+            elif len(section_matches) > 1:
+                raise ValueError(f"Multiple matches found for key '{key}' in section '{section_name}': {section_matches}")
+            return -1  # No matches in the specified section
+
+        return matching_indices  # Return all matches if no section specified
+
 
     def _identify_sections(self):
         """Identify sections based on first column in workbook
@@ -80,15 +138,16 @@ class ExcelFile:
         for row_index, value in enumerate(self.worksheet.iloc[:, 0]):
             if isinstance(value, str) and value.isupper():
                 if current_section:
-                    sections[current_section][1] = row_index
+                    sections[current_section][1] = row_index -1
                 if isinstance(value, str) and isinstance(value, str):
                     current_section = value.strip()
                 else:
                     current_section = value
-                sections[current_section] = [row_index, None]
+                sections[current_section] = [row_index + 1, None]
 
         if current_section:
-            sections[current_section][1] = self.worksheet.iloc[:, 0].last_valid_index() + 1
+            sections[current_section][1] = self.worksheet.iloc[:, 0].last_valid_index()
+        self.identified_sections = sections
         return sections
     
     def create_template_structure(self):
@@ -105,116 +164,43 @@ class ExcelFile:
         # Identify sections
         sections = self._identify_sections()
 
-        # Use configuration for takeover divider
-        takeover_divider_key = next(
-            (key for key in self.sections_config["SECTION_STATION_TAKEOVER_DIVIDER"] if key in sections), 
-            None
-        )
+        # Dynamically retrieve section keys from self.sections_config
+        section_keys = {
+            "takeover_divider": self.sections_config.get("SECTION_STATION_TAKEOVER_DIVIDER", []),
+            "contact_person": self.sections_config.get("SECTION_CONTACT_PERSON", []),
+            "responsible_person": self.sections_config.get("SECTION_RESPONSIBLE_PERSON", [])
+        }
 
-        if takeover_divider_key:
-            global_data = {}
-            for row_index, row in self.worksheet.iloc[:sections[takeover_divider_key][0], :2].iterrows():
-                value, key = row
-                if pd.notna(key) and pd.notna(value):
-                    global_data[key] = row_index
-            template_structure["takeover"]["global_data"] = global_data
+        # Populate takeover sections
+        for key, section_names in section_keys.items():
+            section_match = next((name for name in section_names if name in sections), None)
+            if section_match:
+                section_data = {}
+                for row_index, row in self.worksheet.iloc[sections[section_match][0]:sections[section_match][1], :2].iterrows():
+                    value, key_name = row
+                    if pd.notna(key_name) and pd.notna(value):
+                        section_data[key_name] = row_index
+                template_structure["takeover"][key] = section_data
 
-        # Similar for contact_person and responsible_person
-        contact_person_key = next(
-            (key for key in self.sections_config["SECTION_CONTACT_PERSON"] if key in sections), 
-            None
-        )
-        if contact_person_key:
-            contact_person = {}
-            for row_index, row in self.worksheet.iloc[sections[contact_person_key][0]:sections[contact_person_key][1], :2].iterrows():
-                value, key = row
-                if pd.notna(key) and pd.notna(value):
-                    contact_person[key] = row_index
-            template_structure["takeover"]["contact_person"] = contact_person
-
-        responsible_person_key = next(
-            (key for key in self.sections_config["SECTION_RESPONSIBLE_PERSON"] if key in sections), 
-            None
-        )
-        if responsible_person_key:
-            responsible_person = {}
-            for row_index, row in self.worksheet.iloc[sections[responsible_person_key][0]:sections[responsible_person_key][1], :2].iterrows():
-                value, key = row
-                if pd.notna(key) and pd.notna(value):
-                    responsible_person[key] = row_index
-            template_structure["takeover"]["responsible_person"] = responsible_person
-
-        # Station data
-        station_structure = {}
+        # Populate stations
         for section, section_range in sections.items():
             station_data = {}
             for row_index in range(section_range[0], section_range[1]):
                 key = self.worksheet.iat[row_index, 1]
                 if pd.notna(key):
                     station_data[key] = row_index
-            station_structure[section] = station_data
-        template_structure["stations"] = station_structure
+            template_structure["stations"][section] = station_data
 
         return template_structure
 
-
-    def retrive_stations(self):
-        """_summary_
-
-        Returns:
-            _type_: _description_
-        """
-        if self.discarded_data_info:
-            pass
-        else:
-            self.discarded_data_info = []
-        stations = []
-        length = self.comparison_template.shape[0]
-        for loop_index, (column_name, column_data) in enumerate(self.worksheet.iloc[:, 2:].items()):
-            station_data = self.comparison_template.iloc[:, 1:].copy().values.tolist()
-            for form_index, value, index in self.comparison_template.itertuples(index=False):
-                if index is not -1:
-                    station_data[form_index][1] = column_data.iat[index]
-
-            nones = pd.isna([row[1] for row in station_data]).sum()
-
-            if length - nones <= 3:
-                self.discarded_data_info.append(f"Column {loop_index + 2} not taken int account. Too little data.")
-            else:
-                stations.append(station_data)
-
-        return stations
-    
-    def _update_rows_in_structure(self, data_section):
-        """Checks if the value is in the same row in file and in template.
-        Otherwise looks for that specific value in all rows, and if found then updates row number.
-
-        Args:
-            data_section (dictionary): section of whole data
-
-        Returns:
-            dictionary: updated section
-        """
-
-        updated_section = {}
-        for key, expected_row in data_section.items():
-            actual_label = self.worksheet.iloc[expected_row, 1] if expected_row < len(self.worksheet) else None
-
-            if pd.notna(actual_label) and is_match(actual_label, key):
-                updated_section[key] = expected_row
-            else:
-                updated_section[key] = self.find_row_for_key(key)
-
-        return updated_section
-
     def compare_structure_with_file(self, template):
-        """Compares actual working file with give template to obtain rows that will be used to determine value
+        """Compares actual working file with given template to obtain rows that will be used to determine value
 
         Args:
-            template (dictionary): a dict containg template wich user wants to use
+            template (dictionary): a dict containing template which user wants to use
 
         Returns:
-            dcit: similar to template but updated for that file
+            dict: similar to template but updated for that file
         """
         updated_structure = {
             "takeover": {
@@ -225,14 +211,51 @@ class ExcelFile:
             "stations": {}
         }
 
+        def _update_rows_in_structure(self, data_section, name_of_the_section):
+            """Checks if the value is in the same row in file and in template.
+            Otherwise looks for that specific value in all rows, and if found then updates row number.
+
+            Args:
+                data_section (dict or None): Section of whole data.
+
+            Returns:
+                dict or None: Updated section or None if input is None.
+
+            Raises:
+                InvalidDataSectionError: If the data_section is not a dict or None.
+            """
+            if data_section is None:
+                return None
+            if not isinstance(data_section, dict):
+                raise ValueError(
+                    f"Expected a dictionary or None, but got {type(data_section).__name__}."
+                )
+
+            updated_section = {}
+            for key, expected_row in data_section.items():
+                actual_label = (
+                    self.worksheet.iloc[expected_row, 1] 
+                    if expected_row < len(self.worksheet) else None
+                )
+
+                if pd.notna(actual_label) and is_match(actual_label, key):
+                    updated_section[key] = expected_row
+                else:
+                    row_matches = self.find_row_for_key(key, name_of_the_section)
+
+                    if isinstance(row_matches, list) and len(row_matches) > 1:
+                        raise ValueError(f"Multiple matches found for key '{key}': {row_matches}")
+                    updated_section[key] = row_matches if isinstance(row_matches, int) else -1
+
+            return updated_section
+
         for section_name, takeover_section in template["takeover"].items():
-            updated_structure["takeover"][section_name] = self._update_rows_in_structure(takeover_section)
+            updated_structure["takeover"][section_name] = _update_rows_in_structure(self, takeover_section, section_name)
 
         for section_name, station_section in template["stations"].items():
-            updated_structure["stations"][section_name] = self._update_rows_in_structure(station_section)
+            updated_structure["stations"][section_name] = _update_rows_in_structure(self, station_section, section_name)
 
         return updated_structure
-
 
     def create_data_structure_from_template(self, template):
         """Gather data from file based on template and structurize them in one dict object
@@ -300,4 +323,32 @@ class ExcelFile:
             matching_group["stations"].append(station_data)
 
         return collected_takeover_structures
+
+    def retrive_stations(self):
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
+        if self.discarded_data_info:
+            pass
+        else:
+            self.discarded_data_info = []
+        stations = []
+        length = self.comparison_template.shape[0]
+        for loop_index, (column_name, column_data) in enumerate(self.worksheet.iloc[:, 2:].items()):
+            station_data = self.comparison_template.iloc[:, 1:].copy().values.tolist()
+            for form_index, value, index in self.comparison_template.itertuples(index=False):
+                if index != -1:
+                    station_data[form_index][1] = column_data.iat[index]
+
+            nones = pd.isna([row[1] for row in station_data]).sum()
+
+            if length - nones <= 3:
+                self.discarded_data_info.append(f"Column {loop_index + 2} not taken int account. Too little data.")
+            else:
+                stations.append(station_data)
+
+        return stations
+    
 
