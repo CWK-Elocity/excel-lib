@@ -67,6 +67,7 @@ class ExcelFile:
         """
         Finds all row indices for a given key in the worksheet.
         Optionally filters matches by a specific section.
+        Section filter only works when there is more tan one match.
 
         Args:
             key (str): The key to search for.
@@ -237,12 +238,11 @@ class ExcelFile:
                     self.worksheet.iloc[expected_row, 1] 
                     if expected_row < len(self.worksheet) else None
                 )
+                row_matches = self.find_row_for_key(key, name_of_the_section)
 
-                if pd.notna(actual_label) and is_match(actual_label, key):
-                    updated_section[key] = expected_row
+                if pd.notna(actual_label) and is_match(actual_label, key) and isinstance(row_matches, int):
+                    updated_section[key] = row_matches
                 else:
-                    row_matches = self.find_row_for_key(key, name_of_the_section)
-
                     if isinstance(row_matches, list) and len(row_matches) > 1:
                         raise ValueError(f"Multiple matches found for key '{key}': {row_matches}")
                     updated_section[key] = row_matches if isinstance(row_matches, int) else -1
@@ -324,6 +324,8 @@ class ExcelFile:
 
         return collected_takeover_structures
 
+
+'''obsolete
     def retrive_stations(self):
         """_summary_
 
@@ -350,5 +352,6 @@ class ExcelFile:
                 stations.append(station_data)
 
         return stations
+'''
     
 
