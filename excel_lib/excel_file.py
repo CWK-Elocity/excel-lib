@@ -155,7 +155,7 @@ class ExcelFile:
         """Creates a template structure based on the Excel file."""
         template_structure = {
             "takeover": {
-                "global_data": {},
+                "global_data": None,
                 "contact_person": None,
                 "responsible_person": None
             },
@@ -167,17 +167,16 @@ class ExcelFile:
 
         # Dynamically retrieve section keys from self.sections_config
         section_keys = {
-            "takeover_divider": self.sections_config.get("SECTION_STATION_TAKEOVER_DIVIDER", []),
             "contact_person": self.sections_config.get("SECTION_CONTACT_PERSON", []),
             "responsible_person": self.sections_config.get("SECTION_RESPONSIBLE_PERSON", [])
         }
 
-        takeover_divider_key = section_keys.get("takeover_divider", None)
+        takeover_divider_key = self.sections_config.get("SECTION_STATION_TAKEOVER_DIVIDER", [])
         if takeover_divider_key:
             divider = next((name for name in takeover_divider_key if name in sections), None)
             if divider:
                 global_data = {}
-                for row_index, row in self.worksheet.iloc[:sections[divider][0], :2].iterrows():
+                for row_index, row in self.worksheet.iloc[:sections[divider][0]-1, :2].iterrows():
                     value, key = row
                     if pd.notna(key) and pd.notna(value):
                         global_data[key] = row_index
@@ -188,7 +187,7 @@ class ExcelFile:
             section_match = next((name for name in section_names if name in sections), None)
             if section_match:
                 section_data = {}
-                for row_index, row in self.worksheet.iloc[sections[section_match][0]:sections[section_match][1], :2].iterrows():
+                for row_index, row in self.worksheet.iloc[sections[section_match][0]:sections[section_match][1]+2, :2].iterrows():
                     value, key_name = row
                     if pd.notna(key_name) and pd.notna(value):
                         section_data[key_name] = row_index
@@ -197,9 +196,11 @@ class ExcelFile:
         # Populate stations
         for section, section_range in sections.items():
             station_data = {}
-            for row_index in range(section_range[0], section_range[1]):
+            for row_index in range(section_range[0], section_range[1]+1):
                 key = self.worksheet.iat[row_index, 1]
                 if pd.notna(key):
+                    if isinstance(key, str):
+                        key = key.strip()
                     station_data[key] = row_index
             template_structure["stations"][section] = station_data
 

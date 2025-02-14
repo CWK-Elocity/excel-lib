@@ -253,12 +253,14 @@ Test that create_template_structure extracts the expected overall structure from
     assert "stations" in template_structure, "Template should contain 'stations'."
     
     # Validate types for the takeover sub-sections
+    
     assert isinstance(template_structure["takeover"].get("global_data"), dict), "Global data should be a dict."
     assert isinstance(template_structure["takeover"].get("contact_person"), (dict, type(None))), \
         "Contact person should be a dict or None."
     assert isinstance(template_structure["takeover"].get("responsible_person"), (dict, type(None))), \
         "Responsible person should be a dict or None."
     assert isinstance(template_structure["stations"], dict), "Stations should be a dict."
+    assert len(template_structure["takeover"]) == 3, "Expected three keys in takeover data."
     assert len(template_structure["takeover"].get("global_data")) == 2, "Expected two keys in global data."
     assert len(template_structure["takeover"].get("contact_person")) == 3, "Expected three keys in contact person." # 3 keys in contact person cause 2 are set to None
     assert len(template_structure["takeover"].get("responsible_person")) == 4, "Expected four keys in responsible person." # 4 keys in responsible person cause 1 is set to None
@@ -282,6 +284,58 @@ Test that the template structure contains only the expected sections and keys.
         if values is not None:
             for sub_key in values:
                 assert sub_key in values, f"Unexpected sub-key '{sub_key}' in takeover section."
+
+import json
+
+def test_create_template_structure_with_valid_xlsx():
+    """
+    Test that create_template_structure creates the expected structure from valid.xlsx
+    matching the structure defined in template.json
+    """
+    # Load the expected template from JSON file
+    with open("tests/files/template.json", "r", encoding='utf-8') as f:
+        expected_template = json.load(f)
+    
+    # Load and process the Excel file
+    with open("tests/files/valid.xlsx", "rb") as f:
+        file_stream = io.BytesIO(f.read())
+    
+    excel_file = ExcelFile(file_stream, SECTIONS_CONFIG)
+    actual_template = excel_file.create_template_structure()
+    
+    # Verify the overall structure
+    assert "takeover" in actual_template
+    assert "stations" in actual_template
+    
+    # Verify takeover section
+    takeover = actual_template["takeover"]
+    expected_takeover = expected_template["takeover"]
+    
+    # Verify global_data section
+    assert isinstance(takeover["global_data"], dict)
+    assert len(takeover["global_data"]) == len(expected_takeover["global_data"])
+    assert set(takeover["global_data"].keys()) == set(expected_takeover["global_data"].keys())
+    
+    # Verify contact_person section
+    assert isinstance(takeover["contact_person"], dict)
+    assert len(takeover["contact_person"]) == len(expected_takeover["contact_person"])
+    assert set(takeover["contact_person"].keys()) == set(expected_takeover["contact_person"].keys())
+    
+    # Verify responsible_person section
+    assert isinstance(takeover["responsible_person"], dict)
+    assert len(takeover["responsible_person"]) == len(expected_takeover["responsible_person"])
+    assert set(takeover["responsible_person"].keys()) == set(expected_takeover["responsible_person"].keys())
+    
+    # Verify stations section
+    assert isinstance(actual_template["stations"], dict)
+    assert len(actual_template["stations"]) == len(expected_template["stations"])
+    
+    # Verify each station section
+    for section_name, expected_section in expected_template["stations"].items():
+        assert section_name in actual_template["stations"]
+        actual_section = actual_template["stations"][section_name]
+        assert len(actual_section) == len(expected_section)
+        assert set(actual_section.keys()) == set(expected_section.keys())
 
 # -------------------------------------------------------------------------------------------
 # Tests for compare_structure_with_file
