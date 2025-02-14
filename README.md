@@ -76,7 +76,7 @@ To properly process an Excel file using this library, follow these steps:
        "SECTION_STATION_TAKEOVER_DIVIDER": ["STACJA ŁADOWANIA – DANE"],
        "SECTION_CONTACT_PERSON": ["OSOBA KONTAKTOWA - EKSPLOATACJA STACJI"],
        "SECTION_RESPONSIBLE_PERSON": ["OSOBA ODPOWIEDZIALNA ZA PRZEJĘCIE STACJI PO STRONIE KLIENTA"]
-  }
+   }
    ```
 
 3. Create an instance of `ExcelFile` using the file stream and configuration.

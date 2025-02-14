@@ -172,6 +172,17 @@ class ExcelFile:
             "responsible_person": self.sections_config.get("SECTION_RESPONSIBLE_PERSON", [])
         }
 
+        takeover_divider_key = section_keys.get("takeover_divider", None)
+        if takeover_divider_key:
+            divider = next((name for name in takeover_divider_key if name in sections), None)
+            if divider:
+                global_data = {}
+                for row_index, row in self.worksheet.iloc[:sections[divider][0], :2].iterrows():
+                    value, key = row
+                    if pd.notna(key) and pd.notna(value):
+                        global_data[key] = row_index
+                template_structure["takeover"]["global_data"] = global_data
+
         # Populate takeover sections
         for key, section_names in section_keys.items():
             section_match = next((name for name in section_names if name in sections), None)

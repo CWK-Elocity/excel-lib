@@ -5,7 +5,7 @@ from excel_lib.excel_file import ExcelFile
 
 # Global config for section names used in tests.
 SECTIONS_CONFIG = {
-    "SECTION_STATION_TAKEOVER_DIVIDER": ["STACJA ŁADOWANIA – DANE"],
+    "SECTION_STATION_TAKEOVER_DIVIDER": ["STACJA ŁADOWANIA – DANE", "STACJA ŁADOWANIA - DANE"],
     "SECTION_CONTACT_PERSON": ["OSOBA KONTAKTOWA - EKSPOLATACJA STACJI"],
     "SECTION_RESPONSIBLE_PERSON": ["OSOBA ODPOWIEDZIALNA ZA PRZEJĘCIE STACJI PO STRONIE KLIENTA"]
 }
@@ -259,6 +259,11 @@ Test that create_template_structure extracts the expected overall structure from
     assert isinstance(template_structure["takeover"].get("responsible_person"), (dict, type(None))), \
         "Responsible person should be a dict or None."
     assert isinstance(template_structure["stations"], dict), "Stations should be a dict."
+    assert len(template_structure["takeover"].get("global_data")) == 2, "Expected two keys in global data."
+    assert len(template_structure["takeover"].get("contact_person")) == 3, "Expected three keys in contact person." # 3 keys in contact person cause 2 are set to None
+    assert len(template_structure["takeover"].get("responsible_person")) == 4, "Expected four keys in responsible person." # 4 keys in responsible person cause 1 is set to None
+    assert len(template_structure["stations"]) == 4, "Expected 4 sections in station."
+    assert len(template_structure["stations"].get("STACJA ŁADOWANIA – DANE")) == 5, "Expected 5 keys in STACJA ŁADOWANIA – DANE section"
 
 def test_template_structure_integrity(excel_instance_with_sections):
     """
