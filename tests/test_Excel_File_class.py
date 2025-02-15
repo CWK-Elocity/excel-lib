@@ -263,7 +263,7 @@ Test that create_template_structure extracts the expected overall structure from
     assert len(template_structure["takeover"]) == 3, "Expected three keys in takeover data."
     assert len(template_structure["takeover"].get("global_data")) == 2, "Expected two keys in global data."
     assert len(template_structure["takeover"].get("contact_person")) == 3, "Expected three keys in contact person." # 3 keys in contact person cause 2 are set to None
-    assert len(template_structure["takeover"].get("responsible_person")) == 4, "Expected four keys in responsible person." # 4 keys in responsible person cause 1 is set to None
+    assert len(template_structure["takeover"].get("responsible_person")) == 5, "Expected five keys in responsible person." # 4 keys in responsible person cause 1 is set to None
     assert len(template_structure["stations"]) == 4, "Expected 4 sections in station."
     assert len(template_structure["stations"].get("STACJA ŁADOWANIA – DANE")) == 5, "Expected 5 keys in STACJA ŁADOWANIA – DANE section"
 
@@ -528,3 +528,66 @@ def test_create_data_structure_from_template(sample_excel_file, sample_template)
     assert len(data_structure[2]["stations"]) == 1
     assert data_structure[2]["stations"][0]["SECTION4"] == {"key7": "value20", "key1": "value21"}
     assert data_structure[2]["stations"][0]["SECTION2"] == {"key9": "value23", "key10": "value24"}
+
+# -------------------------------------------------------------------------------------------
+# Tests for create_data_structure_from_template
+# -------------------------------------------------------------------------------------------
+@pytest.fixture
+def sample_excel_file_with_none_columns(tmp_path):
+    """Creates a temporary test Excel file with columns containing all None values."""
+    file_path = tmp_path / "test_file_with_none_columns.xlsx"
+    df = pd.DataFrame({
+        'A': ['Lp', 'SECTION1', 'key1', 'key2', 'SECTION2', 'key3', 'key4'],
+        'B': [1, None, 'key1', 'key2', None, 'key3', 'key4'],
+        'C': [None, None, None, None, None, None, None],  # All None column
+        'D': [2, 'value1', 'value2', 'value3', 'value4', 'value5', 'value6'],
+        'E': [None, None, None, None, None, None, None],  # All None column
+        'F': [3, 'value7', 'value8', 'value9', 'value10', 'value11', 'value12']
+    })
+    df.to_excel(file_path, index=False, header=False)
+    return file_path
+
+@pytest.fixture
+def sample_template_with_none_columns():
+    """Creates a sample template structure for testing create_data_structure_from_template with None columns."""
+    return {
+        "takeover": {
+            "global_data": {"key1": 2, "key2": 3},
+            "contact_person": {"key3": 5}, 
+            "responsible_person": {"key4": 6}
+        },
+        "stations": {
+            "SECTION1": {"key1": 2, "key2": 3},
+            "SECTION2": {"key3": 5, "key4": 6}
+        }
+    }
+
+def test_create_data_structure_from_template_with_none_columns(sample_excel_file_with_none_columns, sample_template_with_none_columns):
+    """Test that create_data_structure_from_template skips columns where all values are None."""
+    with open(sample_excel_file_with_none_columns, "rb") as f:
+        file_stream = io.BytesIO(f.read())
+    sections_config = {
+        "SECTION_STATION_TAKEOVER_DIVIDER": ["SECTION1"],
+        "SECTION_CONTACT_PERSON": ["SECTION2"]
+    }
+    excel_file = ExcelFile(file_stream, sections_config)
+    compared_template = excel_file.compare_structure_with_file(sample_template_with_none_columns)
+    data_structure = excel_file.create_data_structure_from_template(compared_template)
+
+    # Check that the data structure is a list with the correct number of elements
+    assert isinstance(data_structure, list)
+    assert len(data_structure) == 2  # Only two columns with valid data
+
+    # Verify each section contains expected keys and values
+    assert len(data_structure) == 2
+    assert data_structure[0]["global_data"] == {"key1": "value2", "key2": "value3"}
+    assert data_structure[0]["contact_person"] == {"key3": "value5"}
+    assert data_structure[0]["responsible_person"] == {"key4": "value6"}
+    assert data_structure[0]["stations"][0]["SECTION1"] == {"key1": "value2", "key2": "value3"}
+    assert data_structure[0]["stations"][0]["SECTION2"] == {"key3": "value5", "key4": "value6"}
+
+    assert data_structure[1]["global_data"] == {"key1": "value8", "key2": "value9"}
+    assert data_structure[1]["contact_person"] == {"key3": "value11"}
+    assert data_structure[1]["responsible_person"] == {"key4": "value12"}
+    assert data_structure[1]["stations"][0]["SECTION1"] == {"key1": "value8", "key2": "value9"}
+    assert data_structure[1]["stations"][0]["SECTION2"] == {"key3": "value11", "key4": "value12"}

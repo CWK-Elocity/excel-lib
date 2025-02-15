@@ -98,13 +98,8 @@ class ExcelFile:
             "responsible_person": self.sections_config.get("SECTION_RESPONSIBLE_PERSON", [])
         }
 
-        print(f"Current value of section_name: {section_name}")
-
         if section_name in section_keys:
             section_name = section_keys[section_name][0]
-
-
-        print(f"Current value of section_name after search: {section_name}")
 
         if section_name:
             # Get section ranges
@@ -289,6 +284,12 @@ class ExcelFile:
                 key: self.worksheet.iloc[row, column] if row < len(self.worksheet) else None for key, row in data_structure["takeover"]["global_data"].items()
             }
 
+            print(f"dla kolumny: {column} Global data: {current_global_data}")
+
+            # Skip columns where all values are None
+            if all(pd.isna(value) for value in current_global_data.values()):
+                continue
+
             # Check whether there is a struct with this global data
             matching_group = None
             for group in collected_takeover_structures:
@@ -335,35 +336,3 @@ class ExcelFile:
             matching_group["stations"].append(station_data)
 
         return collected_takeover_structures
-
-
-'''obsolete
-    def retrive_stations(self):
-        """_summary_
-
-        Returns:
-            _type_: _description_
-        """
-        if self.discarded_data_info:
-            pass
-        else:
-            self.discarded_data_info = []
-        stations = []
-        length = self.comparison_template.shape[0]
-        for loop_index, (column_name, column_data) in enumerate(self.worksheet.iloc[:, 2:].items()):
-            station_data = self.comparison_template.iloc[:, 1:].copy().values.tolist()
-            for form_index, value, index in self.comparison_template.itertuples(index=False):
-                if index != -1:
-                    station_data[form_index][1] = column_data.iat[index]
-
-            nones = pd.isna([row[1] for row in station_data]).sum()
-
-            if length - nones <= 3:
-                self.discarded_data_info.append(f"Column {loop_index + 2} not taken int account. Too little data.")
-            else:
-                stations.append(station_data)
-
-        return stations
-'''
-    
-
