@@ -284,8 +284,6 @@ class ExcelFile:
                 key: self.worksheet.iloc[row, column] if row < len(self.worksheet) else None for key, row in data_structure["takeover"]["global_data"].items()
             }
 
-            print(f"dla kolumny: {column} Global data: {current_global_data}")
-
             # Skip columns where all values are None
             if all(pd.isna(value) for value in current_global_data.values()):
                 continue
