@@ -60,7 +60,7 @@ class ExcelFile:
         excel_file = pd.ExcelFile(file_stream)
         self.worksheet_count = len(excel_file.sheet_names)  # Get sheet count
         if self.worksheet_count > 1:
-            print(f"Warning: The Excel file contains {self.worksheet_count} sheets. Only the first sheet will be used.")
+            print(f"Warning: The Excel file contains {self.worksheet_count} sheets. Only the first sheet will be used.", dtype=str)
         self.worksheet = pd.read_excel(file_stream, sheet_name=excel_file.sheet_names[0])
 
     def find_row_for_key(self, key, section_name=None):
@@ -168,7 +168,7 @@ class ExcelFile:
 
         takeover_divider_key = self.sections_config.get("SECTION_STATION_TAKEOVER_DIVIDER", [])
         if takeover_divider_key:
-            divider = next((name for name in takeover_divider_key if name in sections), None)
+            divider = next((name.strip() for name in takeover_divider_key if name.strip() in sections), None)
             if divider:
                 global_data = {}
                 for row_index, row in self.worksheet.iloc[:sections[divider][0]-1, :2].iterrows():
@@ -273,15 +273,16 @@ class ExcelFile:
         Returns:
             dict: containg ale data categorised into sections
         """
-
         data_structure = self.compare_structure_with_file(template)
 
         collected_takeover_structures = []
 
         for column in range(2, self.worksheet.shape[1]):
             # Take global data from column
+            global_data_section = data_structure["takeover"]["global_data"] or {}
             current_global_data = {
-                key: self.worksheet.iloc[row, column] if row < len(self.worksheet) else None for key, row in data_structure["takeover"]["global_data"].items()
+                key: self.worksheet.iloc[row, column] if row >= 0 and row < len(self.worksheet) else None 
+                for key, row in global_data_section.items()
             }
 
             # Skip columns where all values are None
@@ -305,32 +306,38 @@ class ExcelFile:
                 }
                 collected_takeover_structures.append(matching_group)
 
-            # Compare contact person
+            # Compare contact person - add fallback for None
+            contact_person_section = data_structure["takeover"]["contact_person"] or {}
             current_contact_person = {
-                key: self.worksheet.iloc[row, column] if row < len(self.worksheet) else None for key, row in data_structure["takeover"]["contact_person"].items()
+                key: self.worksheet.iloc[row, column] if row >= 0 and row < len(self.worksheet) else None 
+                for key, row in contact_person_section.items()
             }
             if matching_group["contact_person"] is None:
                 matching_group["contact_person"] = current_contact_person
             elif matching_group["contact_person"] != current_contact_person:
                 matching_group["contact_person"] = "Dla każdej stacji inna"
 
-            # Compare responsible person
+            # Compare responsible person - add fallback for None
+            responsible_person_section = data_structure["takeover"]["responsible_person"] or {}
             current_responsible_person = {
-                key: self.worksheet.iloc[row, column] if row < len(self.worksheet) else None for key, row in data_structure["takeover"]["responsible_person"].items()
+                key: self.worksheet.iloc[row, column] if row >= 0 and row < len(self.worksheet) else None 
+                for key, row in responsible_person_section.items()
             }
             if matching_group["responsible_person"] is None:
                 matching_group["responsible_person"] = current_responsible_person
             elif matching_group["responsible_person"] != current_responsible_person:
                 matching_group["responsible_person"] = "Dla każdej stacji inna"
 
-            # Add station data
-            station_data = {
-                section: {
-                    field: self.worksheet.iloc[row, column] if row < len(self.worksheet) else None
-                    for field, row in fields.items()
-                }
-                for section, fields in data_structure["stations"].items()
-            }
+            # Add station data - ensure each section and fields are properly handled
+            station_data = {}
+            for section, fields in data_structure["stations"].items():
+                if fields is not None:  # Skip sections with None fields
+                    section_data = {
+                        field: self.worksheet.iloc[row, column] if row >= 0 and row < len(self.worksheet) else None
+                        for field, row in fields.items()
+                    }
+                    station_data[section] = section_data
+            
             matching_group["stations"].append(station_data)
 
         return collected_takeover_structures

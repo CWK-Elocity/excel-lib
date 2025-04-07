@@ -591,3 +591,147 @@ def test_create_data_structure_from_template_with_none_columns(sample_excel_file
     assert data_structure[1]["responsible_person"] == {"key4": "value12"}
     assert data_structure[1]["stations"][0]["SECTION1"] == {"key1": "value8", "key2": "value9"}
     assert data_structure[1]["stations"][0]["SECTION2"] == {"key3": "value11", "key4": "value12"}
+
+# -------------------------------------------------------------------------------------------
+# Tests for terminal
+# -------------------------------------------------------------------------------------------
+SECTIONS_TERMINALS_CONFIG = {
+    "SECTION_STATION_TAKEOVER_DIVIDER": ["TERMINAL – DANE", "TERMINAL - DANE"],
+    "SECTION_CONTACT_PERSON": ["TERMINALA - DANE DO WYSYŁKI"],
+    "SECTION_RESPONSIBLE_PERSON": []
+}
+
+
+def test_create_template_structure_with_terminale_normal_xlsx():
+    """
+    Test that create_template_structure creates the expected structure from Terminale_normal.xlsx
+    matching the structure defined in template_terminal.json
+    """
+    # Load the expected template from JSON file
+    with open("tests/files/template_terminal.json", "r", encoding='utf-8') as f:
+        expected_template = json.load(f)
+    
+    # Load and process the Excel file
+    with open("tests/files/Terminale_normal.xlsx", "rb") as f:
+        file_stream = io.BytesIO(f.read())
+    
+    excel_file = ExcelFile(file_stream, SECTIONS_TERMINALS_CONFIG)
+    actual_template = excel_file.create_template_structure()
+    
+    # Verify the overall structure
+    assert "takeover" in actual_template
+    assert "stations" in actual_template
+    
+    # Verify takeover section
+    takeover = actual_template["takeover"]
+    expected_takeover = expected_template["takeover"]
+
+    print(takeover)
+    
+    # Verify global_data section
+    assert isinstance(takeover["global_data"], dict)
+    assert len(takeover["global_data"]) == len(expected_takeover["global_data"])
+    assert set(takeover["global_data"].keys()) == set(expected_takeover["global_data"].keys())
+    
+    # Verify contact_person section
+    assert isinstance(takeover["contact_person"], dict)
+    assert len(takeover["contact_person"]) == len(expected_takeover["contact_person"])
+    assert set(takeover["contact_person"].keys()) == set(expected_takeover["contact_person"].keys())
+    
+    # Verify responsible_person section
+    assert takeover["responsible_person"] == expected_takeover["responsible_person"]
+    
+    # Verify stations section
+    assert isinstance(actual_template["stations"], dict)
+    assert len(actual_template["stations"]) == len(expected_template["stations"])
+    
+    # Verify each station section
+    for section_name, expected_section in expected_template["stations"].items():
+        assert section_name in actual_template["stations"]
+        actual_section = actual_template["stations"][section_name]
+        assert len(actual_section) == len(expected_section)
+        assert set(actual_section.keys()) == set(expected_section.keys())
+
+def test_create_data_structure_from_template_with_terminale_normal_xlsx():
+    """
+    Test that create_data_structure_from_template correctly extracts data from Terminale_normal.xlsx
+    using the structure defined in template_terminal.json
+    """
+    # Load the template from JSON file
+    with open("tests/files/template_terminal.json", "r", encoding='utf-8') as f:
+        template = json.load(f)
+    
+    # Load and process the Excel file
+    with open("tests/files/Terminale_normal.xlsx", "rb") as f:
+        file_stream = io.BytesIO(f.read())
+    
+    # Create ExcelFile instance
+    excel_file = ExcelFile(file_stream, SECTIONS_TERMINALS_CONFIG)
+    
+    # Compare structure with file to get the updated template
+    compared_template = excel_file.compare_structure_with_file(template)
+    
+    # Create data structure from the template
+    data_structure = excel_file.create_data_structure_from_template(compared_template)
+    
+    # Check that the data structure is a list
+    assert isinstance(data_structure, list)
+    assert len(data_structure) == 1
+    
+    # Verify first entry has expected structure
+    assert "global_data" in data_structure[0]
+    assert "contact_person" in data_structure[0]
+    assert "responsible_person" in data_structure[0]
+    assert "stations" in data_structure[0]
+    
+    # Verify global data values
+    assert data_structure[0]["global_data"]["Osoba odpowiedzialna"] == "PM - Jan Kowalski"
+    assert data_structure[0]["global_data"]["Numer jobu"] == 444
+    assert data_structure[0]["global_data"]["PEŁNA NAZWA KLIENTA"] == "Nazwa Klienta"
+    
+    # Verify contact person values
+    assert data_structure[0]["contact_person"]["Imie i nazwisko (opcjonalnie)"] == "Anna Kowalska"
+    assert data_structure[0]["contact_person"]["Numer telefonu (opcjonalnie)"] == 123456789
+    assert data_structure[0]["contact_person"]["Adres (opcjonalnie)"] == "Adres Wysyki"
+    
+    # Verify responsible person is null
+    assert data_structure[0]["responsible_person"] == {}
+    
+    # Verify station data
+    assert len(data_structure[0]["stations"]) == 2
+    station = data_structure[0]["stations"][0]
+    
+    # TERMINAL - DANE section
+    assert "TERMINAL – DANE" in station
+    assert station["TERMINAL – DANE"]["Model"] == "PAX Im 30"
+    assert station["TERMINAL – DANE"]["Numer seryjny"] == 1234
+    assert station["TERMINAL – DANE"]["Adres instalacji terminala"] == "ul Ulica, Miasto"
+    assert station["TERMINAL – DANE"]["Liczba stacji do podpięcia w terminalu"] == 1
+    assert station["TERMINAL – DANE"]["Nazwa stacji w panelu Elocity"] == "Stacja 1"
+    
+    # TERMINAL - INTERNET section
+    assert "TERMINAL - INTERNET" in station
+    assert station["TERMINAL - INTERNET"]["Połączenie z internetem (GSM/ wifi/ LAN)"] == "GSM"
+    
+    # TERMINALA - DANE DO WYSYŁKI section
+    assert "TERMINALA - DANE DO WYSYŁKI" in station
+    assert station["TERMINALA - DANE DO WYSYŁKI"]["Imie i nazwisko (opcjonalnie)"] == "Anna Kowalska"
+    assert station["TERMINALA - DANE DO WYSYŁKI"]["Numer telefonu (opcjonalnie)"] == 123456789
+
+    station2 = data_structure[0]["stations"][1]
+
+    assert "TERMINAL – DANE" in station2
+    assert station2["TERMINAL – DANE"]["Model"] == "PAX Im 30"
+    assert station2["TERMINAL – DANE"]["Numer seryjny"] == 4321
+    assert station2["TERMINAL – DANE"]["Adres instalacji terminala"] == "ul Inna Ulica, Miasto"
+    assert station2["TERMINAL – DANE"]["Liczba stacji do podpięcia w terminalu"] == 0
+    assert pd.isna(station2["TERMINAL – DANE"]["Nazwa stacji w panelu Elocity"])
+    
+    # TERMINAL - INTERNET section
+    assert "TERMINAL - INTERNET" in station2
+    assert station2["TERMINAL - INTERNET"]["Połączenie z internetem (GSM/ wifi/ LAN)"] == "LAN"
+    
+    # TERMINALA - DANE DO WYSYŁKI section
+    assert "TERMINALA - DANE DO WYSYŁKI" in station2
+    assert station2["TERMINALA - DANE DO WYSYŁKI"]["Imie i nazwisko (opcjonalnie)"] == "Anna Kowalska"
+    assert station2["TERMINALA - DANE DO WYSYŁKI"]["Numer telefonu (opcjonalnie)"] == 123456789

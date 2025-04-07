@@ -1,0 +1,37 @@
+{
+    "takeover": {
+        "global_data": {
+            "Osoba odpowiedzialna": 0,
+            "Numer jobu": 1,
+            "PEŁNA NAZWA KLIENTA": 2
+        },
+        "contact_person": {
+            "Imie i nazwisko (opcjonalnie)": 18,
+            "Numer telefonu (opcjonalnie)": 19,
+            "Adres (opcjonalnie)": 20
+        },
+        "responsible_person": null
+    },
+    "stations": {
+        "TERMINAL – DANE": {
+            "Model": 4, 
+            "Numer seryjny": 5, 
+            "Adres instalacji terminala": 6, 
+            "Liczba stacji do podpięcia w terminalu": 7, 
+            "Nazwa stacji w panelu Elocity": 8, 
+            "Zakup (jak jest data końca gwarancji)": 10, 
+            "Wynajem z datą końca umowy (jaka data końca umowy jest)": 11, 
+            "Wynajem bezterminowy (jaka jest liczba miesięcy okresu wypowiedzenia)": 12
+        }, 
+        "TERMINAL - INTERNET": {
+            "Połączenie z internetem (GSM/ wifi/ LAN)": 14, 
+            "Jakie są dane do WI-FI do połączenia go z terminalem - login i hasło (wymagane jak wybrana została opcja WIFI)": 15, 
+            "Jakie są dane do LAN do połączenia go z terminalem - login i hasło (wymagane jak wybrana została opcja LAN)": 16
+        }, 
+        "TERMINALA - DANE DO WYSYŁKI": {
+            "Imie i nazwisko (opcjonalnie)": 18, 
+            "Numer telefonu (opcjonalnie)": 19, 
+            "Adres (opcjonalnie)": 20
+        }
+    }
+}
