@@ -60,7 +60,7 @@ class ExcelFile:
         excel_file = pd.ExcelFile(file_stream)
         self.worksheet_count = len(excel_file.sheet_names)  # Get sheet count
         if self.worksheet_count > 1:
-            print(f"Warning: The Excel file contains {self.worksheet_count} sheets. Only the first sheet will be used.", dtype=str)
+            print(f"Warning: The Excel file contains {self.worksheet_count} sheets. Only the first sheet will be used.")
         self.worksheet = pd.read_excel(file_stream, sheet_name=excel_file.sheet_names[0])
 
     def find_row_for_key(self, key, section_name=None):
