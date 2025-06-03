@@ -1,0 +1,75 @@
+{
+    "takeover": {
+        "global_data": {
+            "Osoba odpowiedzialna": 0,
+            "Numer jobu": 1,
+            "Deadline": 2,
+            "Pe\u0142na Nazwa Klienta": 3
+        },
+        "contact_person": {
+            "Imie i nazwisko": 39,
+            "Numer telefonu": 40,
+            "Adres e-mail": 41
+        },
+        "responsible_person": {
+            "Imie i nazwisko": 35,
+            "Numer telefonu": 36,
+            "Adres e-mail": 37
+        }
+    },
+    "stations": {
+        "STACJA \u0141ADOWANIA \u2013 DANE": {
+            "Producent": 5,
+            "Model": 6,
+            "Numer seryjny": 7,
+            "Nazwa stacji \u0142adowania w systemie Elocity": 8,
+            "Rodzaj stacji (DC / AC)": 9,
+            "Liczba punkt\u00f3w \u0142adowania": 10,
+            "Punkt 1 - typ portu": 11,
+            "Punkt 1 - moc": 12,
+            "Punkt 2 - typ portu": 13,
+            "Punkt 2 - moc": 14,
+            "Punkt 3 - typ portu": 15,
+            "Punkt 3 - moc": 16,
+            "Punkt 4 - typ portu": 17,
+            "Punkt 4 - moc": 18,
+            "Adres (ulica, nr budynku, kod pocztowy, miejscowo\u015b\u0107)": 19,
+            "Link do oznaczonego punktu na google maps lub wsp\u00f3\u0142rz\u0119dne geograficzne z google maps": 20,
+            "Dane dost\u0119powe (opcjonalnie) np. securite code": 21,
+            "Dost\u0119p do stacji ( za szlbanem / w gara\u017cu podziemnym / z ograniczonym dost\u0119pem) menu rozwijane": 22,
+            "Czy stacja ma zosta\u0107 oklejona standardowo (komplet: instrukcja, regulamin, kontakt i porty)": 23,
+            "Czy stacja ma zosta\u0107 oklejona indywidualnie?": 24,
+            "Numer ewidencyjny z protoko\u0142u UDT (je\u015bli by\u0142o badanie)": 25,
+            "Monter / instalator stacji \u0142adowania": 26,
+            "Data pocz\u0105tku gwarancji na stacj\u0119": 27,
+            "Okres gwarancyjny": 28
+        },
+        "TERMINAL": {
+            "Czy stacja b\u0119dzie z terminalem?": 30,
+            "Kto dostarcza terminal?": 31,
+            "Model terminala": 32,
+            "Numer seryjny terminala": 33
+        },
+        "OSOBA ODPOWIEDZIALNA ZA PRZEJ\u0118CIE STACJI PO STRONIE KLIENTA": {
+            "Imie i nazwisko": 35,
+            "Numer telefonu": 36,
+            "Adres e-mail": 37
+        },
+        "OSOBA KONTAKTOWA - EKSPOLATACJA STACJI": {
+            "Imie i nazwisko": 39,
+            "Numer telefonu": 40,
+            "Adres e-mail": 41
+        },
+        "OPERATOR WPISANY DO SYSTEMU ELOCITY": {
+            "Email w systemie Elocity osoby zarejestrowanej jako operatora stacji": 43,
+            "Czy stacja ma by\u0107 prywatna czy og\u00f3lnodost\u0119pna?": 44
+        },
+        "ZA\u0141\u0104CZNIK": {
+            "Zdj\u0119cie tabliczki znamionowej": 46
+        },
+        "PO\u0141\u0104CZENIE INTERNETOWE": {
+            "Czy stacja b\u0119dzie mia\u0142a zewn\u0119trzne po\u0142\u0105czenie internetowe (np. router)?": 48,
+            "Czy w miejscu monta\u017cu stacji jest zasi\u0119g GSM?": 49
+        }
+    }
+}
