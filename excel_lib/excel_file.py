@@ -23,6 +23,8 @@ class ExcelFile:
         self._validate_excel_file(file_stream)
         self.non_cell_objects = self._check_for_non_cell_objects(file_stream)
         self._load_first_worksheet(file_stream)  # Load only the first worksheet
+        self._identify_sections()
+        self.identified_sections = self._identify_sections()
 
     def _validate_excel_file(self, file_stream):
         """Validates if the file is a correct Excel (.xlsx) file."""
@@ -99,12 +101,15 @@ class ExcelFile:
         }
 
         if section_name in section_keys:
-            section_name = section_keys[section_name][0]
+            matching_section = next((name for name in section_keys[section_name] 
+                           if self.identified_sections and name in self.identified_sections), None)
+            print(f"Matching section for '{section_name}': {matching_section}")
+            print(f"OLD Identified sections: {section_keys[section_name][0]}")
+            if matching_section:
+                section_name = matching_section
 
         if section_name:
             # Get section ranges
-            if self.identified_sections is None:
-                self._identify_sections()
             if self.identified_sections is None:
                 raise ValueError(f"No sections have been identified.")
             if section_name not in self.identified_sections:
@@ -143,7 +148,6 @@ class ExcelFile:
 
         if current_section:
             sections[current_section][1] = self.worksheet.iloc[:, 0].last_valid_index()
-        self.identified_sections = sections
         return sections
     
     def create_template_structure(self):
